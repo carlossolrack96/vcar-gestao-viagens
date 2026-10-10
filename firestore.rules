@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasProfile() {
+      return signedIn()
+        && exists(
+          /databases/$(database)/documents/users/$(request.auth.uid)
+        );
+    }
+
+    function myProfile() {
+      return get(
+        /databases/$(database)/documents/users/$(request.auth.uid)
+      ).data;
+    }
+
+    function belongsTo(companyId) {
+      return hasProfile()
+        && myProfile().companyId == companyId;
+    }
+
+    match /companies/{companyId} {
+      allow read: if belongsTo(companyId);
+      allow create, update, delete: if false;
+
+      match /vehicles/{vehicleId} {
+        allow read, create, update, delete: if belongsTo(companyId);
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if hasProfile()
+        && resource.data.companyId == myProfile().companyId;
+
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
