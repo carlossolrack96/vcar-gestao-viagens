@@ -814,23 +814,27 @@ function App() {
       );
 
       function maintenanceStatus(record, vehicle) {
-        const today = dateKey(new Date());
-        const kmDue =
+        const hasKmLimit =
           record.nextKm !== null &&
           record.nextKm !== undefined &&
-          vehicle.currentKm >= record.nextKm;
-        const dateDue = record.nextDate && today >= record.nextDate;
+          record.nextKm !== "";
+        const hasDateLimit = Boolean(record.nextDate);
+
+        if (!hasKmLimit && !hasDateLimit) return "Sem previsão";
+
+        const today = dateKey(new Date());
+        const kmDue =
+          hasKmLimit && vehicle.currentKm >= Number(record.nextKm);
+        const dateDue = hasDateLimit && today >= record.nextDate;
 
         if (kmDue || dateDue) return "Atrasada";
 
         const kmNear =
-          record.nextKm !== null &&
-          record.nextKm !== undefined &&
-          record.nextKm - vehicle.currentKm <= 1000;
+          hasKmLimit && Number(record.nextKm) - vehicle.currentKm <= 1000;
         const limitDate = new Date();
         limitDate.setDate(limitDate.getDate() + 30);
         const dateNear =
-          record.nextDate &&
+          hasDateLimit &&
           record.nextDate <= dateKey(limitDate) &&
           record.nextDate >= today;
 
@@ -1275,7 +1279,9 @@ function App() {
                                     ? "status-overdue"
                                     : status === "Próxima"
                                       ? "status-soon"
-                                      : "status-ok"
+                                      : status === "Sem previsão"
+                                        ? "status-unknown"
+                                        : "status-ok"
                                 }`}
                               >
                                 {status}
