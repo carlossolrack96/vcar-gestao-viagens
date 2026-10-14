@@ -41,6 +41,9 @@ export async function createTrip(companyId, trip) {
   const tripData = {
     date: trip.date,
     time: trip.time || "",
+    tripType: trip.tripType || "pontual",
+    recurrenceDays: Array.isArray(trip.recurrenceDays) ? trip.recurrenceDays : [],
+    recurrenceEnd: trip.recurrenceEnd || "",
     origin: trip.origin.trim(),
     destination: trip.destination.trim(),
     vehicle: trip.vehicle || "",

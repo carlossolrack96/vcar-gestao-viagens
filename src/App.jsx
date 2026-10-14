@@ -237,6 +237,9 @@ function App() {
   const [tripForm, setTripForm] = useState({
     date: dateKey(new Date()),
     time: "",
+    tripType: "pontual",
+    recurrenceDays: [],
+    recurrenceEnd: "",
     origin: "",
     destination: "",
     vehicle: "",
@@ -1023,6 +1026,61 @@ function App() {
             required
           />
         </div>
+
+        <div className="field">
+          <label htmlFor="trip-type">Tipo de viagem</label>
+          <select
+            id="trip-type"
+            value={tripForm.tripType}
+            onChange={(event) => setTripForm({ ...tripForm, tripType: event.target.value })}
+          >
+            <option value="pontual">Viagem pontual</option>
+            <option value="recorrente">Viagem recorrente</option>
+            <option value="excursao">Excursão</option>
+          </select>
+        </div>
+
+        {tripForm.tripType === "recorrente" && (
+          <>
+            <div className="field full-field">
+              <label>Dias da semana</label>
+              {[
+                ["1", "Segunda-feira"],
+                ["2", "Terça-feira"],
+                ["3", "Quarta-feira"],
+                ["4", "Quinta-feira"],
+                ["5", "Sexta-feira"],
+                ["6", "Sábado"],
+                ["0", "Domingo"],
+              ].map(([day, label]) => (
+                <label key={day}>
+                  <input
+                    type="checkbox"
+                    checked={tripForm.recurrenceDays.includes(day)}
+                    onChange={(event) => setTripForm({
+                      ...tripForm,
+                      recurrenceDays: event.target.checked
+                        ? [...tripForm.recurrenceDays, day]
+                        : tripForm.recurrenceDays.filter((item) => item !== day),
+                    })}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div className="field">
+              <label htmlFor="recurrence-end">Repetir até</label>
+              <input
+                id="recurrence-end"
+                type="date"
+                min={tripForm.date}
+                value={tripForm.recurrenceEnd}
+                onChange={(event) => setTripForm({ ...tripForm, recurrenceEnd: event.target.value })}
+                required
+              />
+            </div>
+          </>
+        )}
 
         <div className="field">
           <label htmlFor="trip-time">Horário</label>
