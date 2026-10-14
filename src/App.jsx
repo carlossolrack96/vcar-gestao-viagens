@@ -8,6 +8,8 @@ import { createVehicle, listVehicles, updateVehicle } from "./services/vehicles"
 import { createTrip, listTrips, deleteTrip } from "./services/trips";
 import { publishTrip } from "./services/publishTrip";
 import { createTransaction, listTransactions } from "./services/transactions";
+import { listPublicTrips } from "./services/publicTrips";
+import { submitPublicBooking } from "./services/publicBookings";
 import { createClient, listClients } from "./services/clients";
 import { createBooking, listBookings, updateBookingStatus } from "./services/bookings";
 import "./App.css";
@@ -41,7 +43,72 @@ function money(value) {
   });
 }
 
+
+function PublicReservations() {
+  const params = new URLSearchParams(window.location.search);
+  const companyCode = params.get("empresa") || "";
+  const [trips, setTrips] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [form, setForm] = useState({ tripId: "", passengerName: "", whatsapp: "", passengers: "1", boarding: "", dropoff: "" });
+
+  useEffect(() => {
+    let active = true;
+    listPublicTrips(companyCode)
+      .then((items) => { if (active) setTrips(items); })
+      .catch((err) => { if (active) setError(err.message || "Não foi possível carregar as viagens."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [companyCode]);
+
+  async function sendRequest(event) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    try {
+      await submitPublicBooking({ companyCode, ...form });
+      setNotice("Solicitação enviada! A empresa entrará em contato para confirmar.");
+      setForm((current) => ({ ...current, passengerName: "", whatsapp: "", boarding: "", dropoff: "" }));
+    } catch (err) {
+      setError(err.message || "Não foi possível enviar a solicitação.");
+    }
+  }
+
+  return (
+    <main className="login-page">
+      <section className="login-card public-reservations">
+        <div className="brand"><div className="brand-logo">V</div><div><h1>VCAR</h1><p>Reservas de viagens</p></div></div>
+        <h2>Viagens disponíveis</h2>
+        {!companyCode && <p className="login-error">Link inválido: falta identificar a empresa.</p>}
+        {loading && <p>Carregando viagens...</p>}
+        {!loading && companyCode && trips.length === 0 && !error && <p className="muted-text">Nenhuma viagem disponível no momento.</p>}
+        {trips.map((trip) => (
+          <button key={trip.id} type="button" className="secondary-button" style={{ width: "100%", marginBottom: 8, justifyContent: "space-between" }} onClick={() => setForm((current) => ({ ...current, tripId: trip.id }))}>
+            <span>{trip.origin} → {trip.destination}<br />{trip.travel_date} {trip.travel_time || ""}</span>
+            <strong>{money(trip.fare_price)}</strong>
+          </button>
+        ))}
+        {trips.length > 0 && <form className="login-form" onSubmit={sendRequest}>
+          <h3>Solicitar reserva</h3>
+          <div className="field"><label>Viagem</label><select value={form.tripId} onChange={(e) => setForm({ ...form, tripId: e.target.value })} required><option value="">Selecione a viagem</option>{trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.origin} → {trip.destination} — {trip.travel_date}</option>)}</select></div>
+          <div className="field"><label>Nome completo</label><input value={form.passengerName} onChange={(e) => setForm({ ...form, passengerName: e.target.value })} required /></div>
+          <div className="field"><label>WhatsApp</label><input value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} required /></div>
+          <div className="field"><label>Quantidade de passageiros</label><input type="number" min="1" max="20" value={form.passengers} onChange={(e) => setForm({ ...form, passengers: e.target.value })} required /></div>
+          <div className="field"><label>Local de embarque</label><input value={form.boarding} onChange={(e) => setForm({ ...form, boarding: e.target.value })} required /></div>
+          <div className="field"><label>Destino/desembarque</label><input value={form.dropoff} onChange={(e) => setForm({ ...form, dropoff: e.target.value })} required /></div>
+          {error && <p className="login-error">{error}</p>}
+          {notice && <p className="notice">{notice}</p>}
+          <button type="submit">Solicitar reserva</button>
+        </form>}
+        {error && trips.length === 0 && <p className="login-error">{error}</p>}
+      </section>
+    </main>
+  );
+}
+
 function App() {
+  if (window.location.pathname === "/reservas") return <PublicReservations />;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -2496,6 +2563,19 @@ function App() {
             <div>
               <h2>Calendário</h2>
               <p>Selecione um dia para consultar a programação.</p>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => {
+                  const link = `${window.location.origin}/reservas?empresa=${encodeURIComponent(companyProfile.companyId)}`;
+                  navigator.clipboard.writeText(link).then(
+                    () => setTripNotice("Link público copiado para compartilhar."),
+                    () => setTripError("Não foi possível copiar o link.")
+                  );
+                }}
+              >
+                Compartilhar link público
+              </button>
             </div>
             <div className="month-controls">
               <button
